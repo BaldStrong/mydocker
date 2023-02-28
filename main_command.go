@@ -1,6 +1,7 @@
 package main
 
 import (
+	"example/chap3/cgroups/subsystems"
 	"example/chap3/container"
 	"fmt"
 
@@ -16,14 +17,35 @@ var runCommand = cli.Command{
 			Name:  "ti",
 			Usage: "enable tty",
 		},
+		cli.StringFlag{
+			Name:  "mem", // 如果Name只有一个字母的话，只需要一个 - 就行，多个字母就需要两个--
+			Usage: "memory limit",
+		},
+		cli.StringFlag{
+			Name:  "cpushare",
+			Usage: "cpushare limit",
+		},
+		cli.StringFlag{
+			Name:  "cpuset",
+			Usage: "cpuset limit",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
-			return fmt.Errorf("Missing container command")
+			return fmt.Errorf("missing container command")
 		}
-		cmd := context.Args().Get(0)
+		var cmd []string
+		for _, arg := range context.Args() {
+			cmd = append(cmd, arg)
+		}
 		tty := context.Bool("ti")
-		Run(tty, cmd)
+
+		resConf := &subsystems.ResourceConfig{
+			MemoryLimit: context.String("mem"),
+			CpuSet:      context.String("cpuset"),
+			CpuShare:    context.String("cpushare"),
+		}
+		Run(tty, cmd, resConf)
 		return nil
 	},
 }
@@ -32,10 +54,8 @@ var initCommand = cli.Command{
 	Name:  "init",
 	Usage: "Init container process run user's process in container. Do not call it outside",
 	Action: func(context *cli.Context) error {
-		log.Infof("init come on")
-		cmd := context.Args().Get(0)
-		log.Infof("initCommand %s", cmd)
-		err := container.RunContainerInitProcess(cmd, nil)
+		log.Info("init come on")
+		err := container.RunContainerInitProcess()
 		return err
 	},
 }
