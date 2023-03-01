@@ -4,14 +4,16 @@ import (
 	"example/chap3/cgroups"
 	"example/chap3/cgroups/subsystems"
 	"example/chap3/container"
+	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 func Run(tty bool, command []string, res *subsystems.ResourceConfig) {
-	parent, writePipe := container.NewParentProcess(tty, command)
+	parent, writePipe := container.NewParentProcess(tty)
 	if parent == nil {
 		log.Errorf("New parent process error")
 		return
@@ -32,6 +34,8 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig) {
 func sendInitCommand(cmdArray []string, writePipe *os.File) {
 	oneCommand := strings.Join(cmdArray, " ")
 	log.Infof("command all is %s", oneCommand)
+	time.Sleep(3 * time.Second)
 	writePipe.WriteString(oneCommand)
+	fmt.Println("结束writePipe")
 	writePipe.Close()
 }

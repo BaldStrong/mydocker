@@ -34,6 +34,7 @@ var runCommand = cli.Command{
 		if len(context.Args()) < 1 {
 			return fmt.Errorf("missing container command")
 		}
+		// context.Args()代表flag处后面的内容
 		var cmd []string
 		for _, arg := range context.Args() {
 			cmd = append(cmd, arg)
