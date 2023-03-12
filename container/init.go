@@ -17,6 +17,10 @@ func RunContainerInitProcess() error {
 		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
 
+	//需要手动将proc挂载到该进程下
+	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
+	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+
 	// 读到的第一个参数作为可执行文件的路径，进入容器后执行的第一个程序
 	path, err := exec.LookPath(cmdArray[0])
 	if err != nil {
@@ -31,9 +35,9 @@ func RunContainerInitProcess() error {
 
 func readUserCommand() []string {
 	pipe := os.NewFile(uintptr(3), "pipe")
-	fmt.Println("开始ReadAll")
+	// fmt.Println("开始ReadAll")
 	msg, err := ioutil.ReadAll(pipe)
-	fmt.Println("结束ReadAll")
+	// fmt.Println("结束ReadAll")
 	if err != nil {
 		log.Errorf("init read pipe error %v", err)
 	}
