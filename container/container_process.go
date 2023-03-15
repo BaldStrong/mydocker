@@ -27,7 +27,7 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
 	// setUpMount()的GetWd获取
-	cmd.Dir = "/home/gyq/learn_docker/chap3/mydocker/busybox"
+	cmd.Dir = "/root/busybox"
 	return cmd, writePipe
 }
 

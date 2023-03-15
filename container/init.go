@@ -53,12 +53,10 @@ func setUpMount() {
 		log.Errorf("Get current location error %v", err)
 		return
 	}
-	log.Infof("Current location iS %s", pwd)
+	log.Infof("Current location is %s", pwd)
 	pivotRoot(pwd)
-
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
-
 	syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
 
 }
@@ -72,10 +70,15 @@ func pivotRoot(rootPath string) error {
 
 	// 创建/rootPath/.pivot_root目录
 	pivotDir := filepath.Join(rootPath, ".pivot_root")
-	if err := os.Mkdir(pivotDir, 0777); err != nil {
-		return err
+	if _, err := os.Stat(pivotDir); os.IsNotExist(err) {
+		if err := os.Mkdir(pivotDir, 0777); err != nil {
+			fmt.Println(pivotDir, " not exist, creat one.")
+			return fmt.Errorf("pivot_root mkdir error: %v", err)
+		}
+	} else {
+		fmt.Println(pivotDir, " already exists.")
 	}
-
+	// fmt.Println("rootPath:", rootPath, pivotDir)
 	//切换根目录挂载点到rootPath，旧的old_root挂载到pivotDir上
 	if err := syscall.PivotRoot(rootPath, pivotDir); err != nil {
 		return fmt.Errorf("pivot_root %v", err)
@@ -92,4 +95,5 @@ func pivotRoot(rootPath string) error {
 	}
 	// 删除pivotDir目录
 	return os.Remove(pivotDir)
+	// return nil
 }
