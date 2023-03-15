@@ -17,9 +17,9 @@ func (s *MemorySubSystem) Name() string {
 
 func (s *MemorySubSystem) Set(cgroupPath string, res *ResourceConfig) error {
 	if subsysCgroupPath, err := GetCgroupPath(s.Name(), cgroupPath, true); err == nil {
-		fmt.Println("subsysCgroupPath:", subsysCgroupPath, "res.MemoryLimit:", res.MemoryLimit)
+		fmt.Println("subsysCgroupPath:", subsysCgroupPath, "memory.high:", res.MemoryLimit)
 		if res.MemoryLimit != "" {
-			if err := ioutil.WriteFile(path.Join(subsysCgroupPath, "memory.limit_in_bytes"), []byte(res.MemoryLimit), 0644); err != nil {
+			if err := ioutil.WriteFile(path.Join(subsysCgroupPath, "memory.high"), []byte(res.MemoryLimit), 0644); err != nil {
 				return fmt.Errorf(" set cgroup memory fail %v", err)
 			}
 		}
@@ -39,8 +39,8 @@ func (s *MemorySubSystem) Remove(cgroupPath string) error {
 
 func (s *MemorySubSystem) Apply(cgroupPath string, pid int) error {
 	if subsysCgroupPath, err := GetCgroupPath(s.Name(), cgroupPath, false); err == nil {
-
-		if err := ioutil.WriteFile(path.Join(subsysCgroupPath, "tasks"), []byte(strconv.Itoa(pid)), 0644); err != nil {
+		fmt.Println("subsysCgroupPath:", subsysCgroupPath, "cgroup.procs:", pid)
+		if err := ioutil.WriteFile(path.Join(subsysCgroupPath, "cgroup.procs"), []byte(strconv.Itoa(pid)), 0644); err != nil {
 			return fmt.Errorf(" set cgroup proc fail %v", err)
 		}
 		return nil

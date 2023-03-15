@@ -19,9 +19,10 @@ func RunContainerInitProcess() error {
 	}
 
 	//需要手动将proc挂载到该进程下
+	// syscall.Mount("", "/", "", syscall.MS_PRIVATE | syscall.MS_REC, "")
 	// defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	// syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
-	setUpMount()
+	// setUpMount()
 
 	// 读到的第一个参数作为可执行文件的路径，进入容器后执行的第一个程序
 	path, err := exec.LookPath(cmdArray[0])
@@ -53,7 +54,7 @@ func setUpMount() {
 		log.Errorf("Get current location error %v", err)
 		return
 	}
-	log.Infof("Current location iS %s", pwd)
+	log.Infof("Current location is %s", pwd)
 	pivotRoot(pwd)
 
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
