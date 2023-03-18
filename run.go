@@ -26,6 +26,10 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig) {
 	cgroupManager.Apply(parent.Process.Pid)
 	sendInitCommand(command, writePipe)
 	parent.Wait()
+	// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
+	mntURL := "/root/overlayFS/mnt"
+	rootURL := "/root/overlayFS/"
+	container.DeleteWorkSpace(rootURL, mntURL)
 	os.Exit(-1)
 }
 
