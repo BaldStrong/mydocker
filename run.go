@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Run(tty bool, command []string, res *subsystems.ResourceConfig) {
-	parent, writePipe := container.NewParentProcess(tty)
+func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string) {
+	parent, writePipe := container.NewParentProcess(tty, volume)
 	if parent == nil {
 		log.Errorf("New parent process error")
 		return
@@ -29,7 +29,7 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig) {
 	// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
 	mntURL := "/root/overlayFS/mnt"
 	rootURL := "/root/overlayFS/"
-	container.DeleteWorkSpace(rootURL, mntURL)
+	container.DeleteWorkSpace(rootURL, mntURL, volume)
 	os.Exit(-1)
 }
 

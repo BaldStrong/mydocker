@@ -18,6 +18,10 @@ var runCommand = cli.Command{
 			Usage: "enable tty",
 		},
 		cli.StringFlag{
+			Name:  "v",
+			Usage: "volume",
+		},
+		cli.StringFlag{
 			Name:  "mem", // 如果Name只有一个字母的话，只需要一个 - 就行，多个字母就需要两个--
 			Usage: "memory limit",
 		},
@@ -46,7 +50,8 @@ var runCommand = cli.Command{
 			CpuSet:      context.String("cpuset"),
 			CpuShare:    context.String("cpushare"),
 		}
-		Run(tty, cmd, resConf)
+		volume := context.String("v")
+		Run(tty, cmd, resConf, volume)
 		return nil
 	},
 }

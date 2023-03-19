@@ -21,6 +21,7 @@ func RunContainerInitProcess() error {
 	//需要手动将proc挂载到该进程下
 	// defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	// syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	log.Info("start setUpMount")
 	setUpMount()
 
 	// 读到的第一个参数作为可执行文件的路径，进入容器后执行的第一个程序

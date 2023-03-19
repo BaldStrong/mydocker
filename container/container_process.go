@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
 )
 
-func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		log.Errorf("New pipe error %v", err)
@@ -29,7 +30,7 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	cmd.ExtraFiles = []*os.File{readPipe}
 	mntURL := "/root/overlayFS/mnt"
 	rootURL := "/root/overlayFS/"
-	NewWorkSpace(rootURL, mntURL)
+	NewWorkSpace(rootURL, mntURL, volume)
 	// setUpMount()的GetWd获取
 	cmd.Dir = mntURL
 	// cmd.Dir = "/root/busybox"
@@ -44,10 +45,11 @@ func NewPipe() (*os.File, *os.File, error) {
 	return read, write, nil
 }
 
-func NewWorkSpace(rootURL string, mntURL string) {
+func NewWorkSpace(rootURL string, mntURL string, volume string) {
 	CreatReadOnlyLayer(rootURL)
 	CreatWriteLayer(rootURL)
-	CreatMountPoint(rootURL, mntURL)
+	CreatMountPoint(rootURL, mntURL, volume)
+
 }
 
 func CreatReadOnlyLayer(rootURL string) {
@@ -60,7 +62,7 @@ func CreatReadOnlyLayer(rootURL string) {
 	}
 
 	if os.IsNotExist(err) {
-		fmt.Println(busyboxURL, " 不存在")
+		fmt.Println(busyboxURL, " isn't exist.")
 		if err := os.Mkdir(busyboxURL, 0777); err != nil {
 			log.Errorf("mkdir busyboxURL %s error. %v", busyboxURL, err)
 		}
@@ -81,7 +83,7 @@ func CreatWriteLayer(rootURL string) {
 	}
 }
 
-func CreatMountPoint(rootURL string, mntURL string) {
+func CreatMountPoint(rootURL string, mntURL string, volume string) {
 	// fmt.Println("创建mnt目录:", mntURL)
 	if err := os.Mkdir(mntURL, 0777); err != nil {
 		log.Errorf("mkdir mntURL %s error. %v", mntURL, err)
@@ -98,11 +100,46 @@ func CreatMountPoint(rootURL string, mntURL string) {
 	if err := cmd.Run(); err != nil {
 		log.Errorf("mount %v", err)
 	}
+
+	if volume != "" {
+		volumeURLs := strings.Split(volume, ":")
+		if len(volumeURLs) == 2 && volumeURLs[0] != "" && volumeURLs[1] != "" {
+			MountVolume(rootURL, mntURL, volumeURLs)
+			log.Infof("create volume mountpoint:", strings.Join(volumeURLs, " "))
+		} else {
+			log.Infof("Volume parameter input is not correct")
+		}
+	}
 }
 
-func DeleteWorkSpace(rootURL string, mntURL string) {
+func MountVolume(rootURL string, mntURL string, volumeURLs []string) {
+	parentURL := volumeURLs[0]
+	if err := os.Mkdir(parentURL, 0777); err != nil {
+		log.Errorf("mkdir parentURL %s error. %v", parentURL, err)
+	}
+	containerURL := volumeURLs[1]
+	containerVolumeURL := mntURL + containerURL
+	fmt.Println("parentURL:", parentURL)
+	fmt.Println("containerVolumeURL:", containerVolumeURL)
+	if err := os.Mkdir(containerVolumeURL, 0777); err != nil {
+		log.Errorf("mkdir containerVolumeURL %s error. %v", containerVolumeURL, err)
+	}
+	// 这里不确定是否是正确的写法，但是可以满足要求
+	// dirs := "lowerdir=" + parentURL + ",upperdir=" + rootURL + "writeLayer" + ",workdir=" + rootURL + "work"
+	// dirs := "lowerdir=" + parentURL + ",upperdir=" + parentURL + ",workdir=" + rootURL + "work"
+	// cmd := exec.Command("mount", "-t", "overlay", "overlay", "-o", dirs, containerVolumeURL)
+	cmd := exec.Command("mount", "--bind", parentURL, containerVolumeURL)
+	// fmt.Println("volume dirs:", dirs)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Errorf("mount volume %v", err)
+	}
+}
+
+func DeleteWorkSpace(rootURL string, mntURL string, volume string) {
+	DeleteMountPoint(rootURL, mntURL, volume)
 	DeleteWriteLayer(rootURL)
-	DeleteMountPoint(rootURL, mntURL)
 }
 
 func DeleteWriteLayer(rootURL string) {
@@ -115,7 +152,21 @@ func DeleteWriteLayer(rootURL string) {
 		log.Errorf("remove workURL %s error. %v", workURL, err)
 	}
 }
-func DeleteMountPoint(rootURL string, mntURL string) {
+
+func DeleteMountPoint(rootURL string, mntURL string, volume string) {
+	if volume != "" {
+		volumeURLs := strings.Split(volume, ":")
+		if len(volumeURLs) == 2 && volumeURLs[0] != "" && volumeURLs[1] != "" {
+			cmd := exec.Command("umount", mntURL+volumeURLs[1])
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				log.Errorf("umount volume failed %v", err)
+			}
+			log.Infof("Delete Volume Mount Point: ", strings.Join(volumeURLs, " "))
+		}
+	}
+
 	cmd := exec.Command("umount", mntURL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
