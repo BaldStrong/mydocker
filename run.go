@@ -25,7 +25,12 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	cgroupManager.Set(res)
 	cgroupManager.Apply(parent.Process.Pid)
 	sendInitCommand(command, writePipe)
-	parent.Wait()
+	// 只有当交互式时父进程会等待子进程结束
+	if tty {
+		parent.Wait()
+	} else {
+		log.Info("以-d模式运行")
+	}
 	// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
 	mntURL := "/root/overlayFS/mnt"
 	rootURL := "/root/overlayFS/"

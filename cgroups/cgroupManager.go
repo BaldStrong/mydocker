@@ -3,7 +3,7 @@ package cgroups
 import (
 	"example/chap3/cgroups/subsystems"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type CgroupManager struct {
@@ -34,7 +34,7 @@ func (c *CgroupManager) Set(res *subsystems.ResourceConfig) error {
 func (c *CgroupManager) Remove() error {
 	for _, subSysIns := range subsystems.SubsystemsIns {
 		if err := subSysIns.Remove(c.Path); err != nil {
-			logrus.Warnf("remove cgroup fail %v", err)
+			log.Warnf("remove cgroup %s fail %v", c.Path, err)
 		}
 	}
 	return nil

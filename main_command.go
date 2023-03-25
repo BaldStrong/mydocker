@@ -21,6 +21,10 @@ var runCommand = cli.Command{
 			Name:  "v",
 			Usage: "volume",
 		},
+		cli.BoolFlag{
+			Name:  "d",
+			Usage: "detach container",
+		},
 		cli.StringFlag{
 			Name:  "mem", // 如果Name只有一个字母的话，只需要一个 - 就行，多个字母就需要两个--
 			Usage: "memory limit",
@@ -44,6 +48,10 @@ var runCommand = cli.Command{
 			cmd = append(cmd, arg)
 		}
 		tty := context.Bool("ti")
+		detach := context.Bool("d")
+		if tty && detach {
+			return fmt.Errorf("ti and d paramter can not both provided")
+		}
 
 		resConf := &subsystems.ResourceConfig{
 			MemoryLimit: context.String("mem"),
