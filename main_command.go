@@ -26,6 +26,10 @@ var runCommand = cli.Command{
 			Usage: "detach container",
 		},
 		cli.StringFlag{
+			Name:  "name",
+			Usage: "specify container name",
+		},
+		cli.StringFlag{
 			Name:  "mem", // 如果Name只有一个字母的话，只需要一个 - 就行，多个字母就需要两个--
 			Usage: "memory limit",
 		},
@@ -59,7 +63,8 @@ var runCommand = cli.Command{
 			CpuShare:    context.String("cpushare"),
 		}
 		volume := context.String("v")
-		Run(tty, cmd, resConf, volume)
+		containerName := context.String("name")
+		Run(tty, cmd, resConf, volume, containerName)
 		return nil
 	},
 }
