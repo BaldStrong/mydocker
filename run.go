@@ -24,7 +24,9 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	if err := parent.Start(); err != nil {
 		log.Fatal(err)
 	}
-	containerName, err := recordContainerInfo(parent.Process.Pid, command, containerName)
+
+	oneCommand := strings.Join(command, " ")
+	containerName, err := recordContainerInfo(parent.Process.Pid, oneCommand, containerName)
 	if err != nil {
 		log.Errorf("record container info error %v", err)
 		return
@@ -34,7 +36,7 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	defer cgroupManager.Remove()
 	cgroupManager.Set(res)
 	cgroupManager.Apply(parent.Process.Pid)
-	sendInitCommand(command, writePipe)
+	sendInitCommand(oneCommand, writePipe)
 	// 只有当交互式时父进程会等待子进程结束
 	if tty {
 		parent.Wait()
@@ -47,8 +49,7 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	os.Exit(-1)
 }
 
-func sendInitCommand(cmdArray []string, writePipe *os.File) {
-	oneCommand := strings.Join(cmdArray, " ")
+func sendInitCommand(oneCommand string, writePipe *os.File) {
 	log.Infof("command all is %s", oneCommand)
 	// time.Sleep(3 * time.Second)
 	writePipe.WriteString(oneCommand)
@@ -56,10 +57,9 @@ func sendInitCommand(cmdArray []string, writePipe *os.File) {
 	writePipe.Close()
 }
 
-func recordContainerInfo(containerPID int, commandArray []string, containerName string) (string, error) {
+func recordContainerInfo(containerPID int, oneCommand string, containerName string) (string, error) {
 	id := randStringBytes(10)
 	createTime := time.Now().Format("2006-01-02 15:04:05")
-	command := strings.Join(commandArray, "")
 	if containerName == "" {
 		log.Info("name is empty, use id")
 		containerName = id
@@ -68,7 +68,7 @@ func recordContainerInfo(containerPID int, commandArray []string, containerName 
 		Id:         id,
 		Pid:        strconv.Itoa(containerPID),
 		Name:       containerName,
-		Command:    command,
+		Command:    oneCommand,
 		CreateTime: createTime,
 		Status:     container.Running,
 	}
@@ -104,7 +104,7 @@ func recordContainerInfo(containerPID int, commandArray []string, containerName 
 
 func randStringBytes(n int) string {
 	letterBytes := "1234567890"
-	// rand.Seed(time.Now().UnixNano())
+	// rand.Seed(time.Now().UnixNano()) 在Go1.21中已废弃
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, n)
 	for i := range b {
