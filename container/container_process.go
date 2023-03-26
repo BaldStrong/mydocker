@@ -25,9 +25,10 @@ var (
 	Exit                string = "exit"
 	DefaultInfoLocation string = "/var/run/mydocker/%s/"
 	ConfigName          string = "config.json"
+	LogName             string = "container.log"
 )
 
-func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		log.Errorf("New pipe error %v", err)
@@ -43,6 +44,20 @@ func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+	} else {
+		logDir := fmt.Sprintf(DefaultInfoLocation, containerName)
+		if err := os.MkdirAll(logDir, 0622); err != nil {
+			log.Errorf("mkdir logDir:%s error %v", logDir, err)
+			return nil, nil
+		}
+		fileName := logDir + "/" + LogName
+		file, err := os.Create(fileName)
+		if err != nil {
+			log.Errorf("create log file:%s error %v", fileName, err)
+			return nil, nil
+		}
+		file.Write()
+		cmd.Stdout = file
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
 	mntURL := "/root/overlayFS/mnt"
