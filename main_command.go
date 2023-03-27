@@ -131,9 +131,11 @@ var execCommand = cli.Command{
 		}
 		containerName := context.Args().Get(0)
 		var commandArray []string
-		for _,arg := range context.Args().Tail(){
-			commandArray=append(commandArray, arg)
-		}
+		// 这种方式更简洁
+		commandArray = append(commandArray,context.Args().Tail()...)
+		// for _,arg := range context.Args().Tail(){
+		// 	commandArray=append(commandArray, arg)
+		// }
 		ExecContainer(containerName,commandArray)
 		return nil
 	},

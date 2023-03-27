@@ -1,11 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"example/chap3/container"
 	_ "example/chap3/nsenter"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -17,7 +13,8 @@ const ENV_EXEC_PID = "mydocker_pid"
 const ENV_EXEC_CMD = "mydocker_cmd"
 
 func ExecContainer(containerName string, commandArray []string) {
-	pid, err := getContainerPidByName(containerName)
+	containerInfo, err := getContainerInfo(containerName)
+	pid := containerInfo.Pid
 	if err != nil {
 		log.Errorf("getContainerPidByName:%s error %v", containerName, err)
 		return
@@ -35,21 +32,4 @@ func ExecContainer(containerName string, commandArray []string) {
 	if err := cmd.Run(); err != nil {
 		log.Errorf("Exec container %s error %v", containerName, err)
 	}
-}
-
-func getContainerPidByName(containerName string) (string, error) {
-	configPath := fmt.Sprintf(container.DefaultInfoLocation, containerName)
-	configPath = configPath + container.ConfigName
-	// configPath = path.Join(configPath, container.ConfigName)
-	content, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		log.Errorf("getContainerPidByName: read configPath:%s error %v", configPath, err)
-		return "", err
-	}
-	var containerInfo container.ContainerInfo
-	if err := json.Unmarshal(content, &containerInfo); err != nil {
-		log.Errorf("getContainerPidByName: Unmarshal error %v", err)
-		return "", err
-	}
-	return containerInfo.Pid, err
 }

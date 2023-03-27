@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"example/chap3/container"
 	"fmt"
-	"io/fs"
 	"io/ioutil"
 	"os"
 	"text/tabwriter"
@@ -24,7 +23,7 @@ func ListContainers() {
 
 	var containerInfos []*container.ContainerInfo
 	for _, file := range files {
-		tmpInfo, err := getContainerInfo(file)
+		tmpInfo, err := getContainerInfo(file.Name())
 		if err != nil {
 			log.Errorf("getContainerInfo error %v", err)
 			continue
@@ -48,8 +47,7 @@ func ListContainers() {
 	}
 }
 
-func getContainerInfo(file fs.FileInfo) (*container.ContainerInfo, error) {
-	containerName := file.Name()
+func getContainerInfo(containerName string) (*container.ContainerInfo, error) {
 	configPath := fmt.Sprintf(container.DefaultInfoLocation, containerName)
 	configPath = configPath + container.ConfigName
 	// configPath = path.Join(configPath, container.ConfigName)

@@ -16,7 +16,7 @@ __attribute__((constructor)) void enter_namespace(void) {
     if(mydocker_pid){
         //fprintf(stdout,"got mydocker_pid=%s\n",mydocker_pid);
     }else{
-        fprintf(stdout,"missing mydocker pid env skip nsenter\n");
+        //fprintf(stdout,"missing mydocker pid env skip nsenter\n");
         return;
     }
 
@@ -25,7 +25,7 @@ __attribute__((constructor)) void enter_namespace(void) {
     if(mydocker_cmd){
         //fprintf(stdout,"got mydocker_cmd=%s\n",mydocker_cmd);
     }else{
-        fprintf(stdout,"missing mydocker cmd env skip nsenter\n");
+        //fprintf(stdout,"missing mydocker cmd env skip nsenter\n");
         return;
     }
     char nspath[1024];
