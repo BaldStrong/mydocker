@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func logContainer(containerName string) {
+func LogContainer(containerName string) {
 	logDir := fmt.Sprintf(container.DefaultInfoLocation, containerName)
 	logPath := logDir + container.LogName
 	file, err := os.Open(logPath)

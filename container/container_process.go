@@ -56,7 +56,6 @@ func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd,
 			log.Errorf("create log file:%s error %v", fileName, err)
 			return nil, nil
 		}
-		file.Write()
 		cmd.Stdout = file
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}

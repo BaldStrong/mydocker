@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func commitContainer(imageName string) {
+func CommitContainer(imageName string) {
 	mntURL := "/root/overlayFS/mnt"
 	imageTarURL := "/root/" + imageName + ".tar"
 	// 此处必须要使用-C将tar目录切换到mntURL，如果直接指定mntURL，会将mntURL也带入，

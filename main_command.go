@@ -4,6 +4,7 @@ import (
 	"example/chap3/cgroups/subsystems"
 	"example/chap3/container"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -87,7 +88,8 @@ var commitCommand = cli.Command{
 			return fmt.Errorf("missing container command")
 		}
 		imageName := context.Args().Get(0)
-		commitContainer(imageName)
+		// 此处暂时大小写无所谓，为了统一，都改成大写
+		CommitContainer(imageName)
 		return nil
 	},
 }
@@ -109,7 +111,30 @@ var logCommand = cli.Command{
 			return fmt.Errorf("please input your container name")
 		}
 		containerName := context.Args().Get(0)
-		logContainer(containerName)
+		// 此处暂时大小写无所谓，为了统一，都改成大写
+		LogContainer(containerName)
+		return nil
+	},
+}
+
+var execCommand = cli.Command{
+	Name:  "exec",
+	Usage: "exec a command into container",
+	Action: func(context *cli.Context) error {
+		if os.Getenv(ENV_EXEC_PID) != ""{
+			log.Infof("pid callback pid %s",os.Getpid())
+			return nil;
+		}
+		// 至少要指定两个参数
+		if len(context.Args()) < 2 {
+			return fmt.Errorf("missing container name or command")
+		}
+		containerName := context.Args().Get(0)
+		var commandArray []string
+		for _,arg := range context.Args().Tail(){
+			commandArray=append(commandArray, arg)
+		}
+		ExecContainer(containerName,commandArray)
 		return nil
 	},
 }
