@@ -1,8 +1,8 @@
 package main
 
 import (
-	"example/chap3/cgroups/subsystems"
-	"example/chap3/container"
+	"example/mydocker/cgroups/subsystems"
+	"example/mydocker/container"
 	"fmt"
 	"os"
 

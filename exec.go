@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "example/chap3/nsenter"
+	_ "example/mydocker/nsenter"
 	"os"
 	"os/exec"
 	"strings"

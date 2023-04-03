@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example/chap3/container"
+	"example/mydocker/container"
 	"fmt"
 	"io/ioutil"
 	"os"

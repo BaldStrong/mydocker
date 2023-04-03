@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"example/chap3/container"
+	"example/mydocker/container"
 	"fmt"
 	"io/ioutil"
 	"os"

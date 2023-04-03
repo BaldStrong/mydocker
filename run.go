@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"example/chap3/cgroups"
-	"example/chap3/cgroups/subsystems"
-	"example/chap3/container"
+	"example/mydocker/cgroups"
+	"example/mydocker/cgroups/subsystems"
+	"example/mydocker/container"
 	"fmt"
 	"math/rand"
 	"os"

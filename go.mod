@@ -1,4 +1,4 @@
-module example/chap3
+module example/mydocker
 
 go 1.20
 
