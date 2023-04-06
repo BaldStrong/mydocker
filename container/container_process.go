@@ -21,8 +21,8 @@ type ContainerInfo struct {
 
 var (
 	Running             string = "running"
-	Stop                string = "stop"
-	Exit                string = "exit"
+	Stop                string = "stopped"
+	Exit                string = "exited"
 	DefaultInfoLocation string = "/var/run/mydocker/%s/"
 	ConfigName          string = "config.json"
 	LogName             string = "container.log"
@@ -59,12 +59,12 @@ func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd,
 		cmd.Stdout = file
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
-	mntURL := "/root/overlayFS/mnt"
-	rootURL := "/root/overlayFS/"
+	mntURL := "../overlayFS/mnt"
+	rootURL := "../overlayFS/"
 	NewWorkSpace(rootURL, mntURL, volume)
 	// setUpMount()的GetWd获取
 	cmd.Dir = mntURL
-	// cmd.Dir = "/root/busybox"
+	// cmd.Dir = "./busybox"
 	return cmd, writePipe
 }
 
