@@ -65,7 +65,9 @@ var runCommand = cli.Command{
 		}
 		volume := context.String("v")
 		containerName := context.String("name")
-		Run(tty, cmd, resConf, volume, containerName)
+		imageName := cmd[0]
+		cmd = cmd[1:]
+		Run(tty, cmd, resConf, volume, containerName,imageName)
 		return nil
 	},
 }

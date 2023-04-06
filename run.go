@@ -15,8 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string, containerName string) {
-	parent, writePipe := container.NewParentProcess(tty, volume, containerName)
+func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string, containerName string, imageName string) {
+	parent, writePipe := container.NewParentProcess(tty, volume, containerName,imageName)
 	if parent == nil {
 		log.Errorf("New parent process error")
 		return
@@ -26,7 +26,7 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	}
 
 	oneCommand := strings.Join(command, " ")
-	containerName, err := recordContainerInfo(parent.Process.Pid, oneCommand, containerName)
+	containerName, err := recordContainerInfo(parent.Process.Pid, oneCommand, containerName,imageName)
 	if err != nil {
 		log.Errorf("record container info error %v", err)
 		return
@@ -57,7 +57,7 @@ func sendInitCommand(oneCommand string, writePipe *os.File) {
 	writePipe.Close()
 }
 
-func recordContainerInfo(containerPID int, oneCommand string, containerName string) (string, error) {
+func recordContainerInfo(containerPID int, oneCommand string, containerName string,imageName string) (string, error) {
 	id := randStringBytes(10)
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	if containerName == "" {
