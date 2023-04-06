@@ -16,7 +16,7 @@ import (
 )
 
 func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string, containerName string, imageName string) {
-	parent, writePipe := container.NewParentProcess(tty, volume, containerName,imageName)
+	parent, writePipe := container.NewParentProcess(tty, volume, containerName, imageName)
 	if parent == nil {
 		log.Errorf("New parent process error")
 		return
@@ -26,7 +26,7 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	}
 
 	oneCommand := strings.Join(command, " ")
-	containerName, err := recordContainerInfo(parent.Process.Pid, oneCommand, containerName,imageName)
+	containerName, err := recordContainerInfo(parent.Process.Pid, oneCommand, containerName, volume)
 	if err != nil {
 		log.Errorf("record container info error %v", err)
 		return
@@ -41,11 +41,9 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	if tty {
 		parent.Wait()
 		deleteContainerInfo(containerName)
+		// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
+		container.DeleteWorkSpace(volume, containerName)
 	}
-	// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
-	mntURL := "../overlayFS/mnt"
-	rootURL := "../overlayFS/"
-	container.DeleteWorkSpace(rootURL, mntURL, volume)
 	os.Exit(-1)
 }
 
@@ -57,7 +55,7 @@ func sendInitCommand(oneCommand string, writePipe *os.File) {
 	writePipe.Close()
 }
 
-func recordContainerInfo(containerPID int, oneCommand string, containerName string,imageName string) (string, error) {
+func recordContainerInfo(containerPID int, oneCommand string, containerName string, volume string) (string, error) {
 	id := randStringBytes(10)
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	if containerName == "" {
@@ -71,6 +69,7 @@ func recordContainerInfo(containerPID int, oneCommand string, containerName stri
 		Command:    oneCommand,
 		CreateTime: createTime,
 		Status:     container.Running,
+		Volume:     volume,
 	}
 
 	jsonBytes, err := json.Marshal(containerInfo)

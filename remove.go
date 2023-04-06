@@ -18,4 +18,5 @@ func RemoveContainer(containerName string) {
 		return
 	}
 	deleteContainerInfo(containerName)
+	container.DeleteWorkSpace(containerInfo.Volume, containerName)
 }
