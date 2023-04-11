@@ -35,7 +35,7 @@ var (
 	WorkLayerUrl  string = "../overlayFS/work/%s"
 )
 
-func NewParentProcess(tty bool, volume string, containerName string, imageName string) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string, containerName string, imageName string, environment []string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		log.Errorf("New pipe error %v", err)
@@ -66,6 +66,7 @@ func NewParentProcess(tty bool, volume string, containerName string, imageName s
 		cmd.Stdout = file
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
+	cmd.Env = append(cmd.Env, environment...)
 	NewWorkSpace(volume, containerName, imageName)
 	// setUpMount()的GetWd获取
 	cmd.Dir = fmt.Sprintf(MntUrl, containerName)

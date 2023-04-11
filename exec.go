@@ -2,6 +2,8 @@ package main
 
 import (
 	_ "example/mydocker/nsenter"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -28,8 +30,22 @@ func ExecContainer(containerName string, commandArray []string) {
 	cmd.Stderr = os.Stderr
 	os.Setenv(ENV_EXEC_PID, pid)
 	os.Setenv(ENV_EXEC_CMD, oneCommand)
+	containerEnv := getEnvsByPid(pid);
+	cmd.Env = append(os.Environ(), containerEnv...)
 
 	if err := cmd.Run(); err != nil {
 		log.Errorf("Exec container %s error %v", containerName, err)
 	}
+}
+
+
+func getEnvsByPid(pid string) []string {
+	environ := fmt.Sprintf("/proc/%s/environ",pid)
+	context,err := ioutil.ReadFile(environ)
+	if err != nil {
+		log.Errorf("read /proc/%s/environ failed: %v",environ,err)
+		return nil
+	}
+	envs := strings.Split(string(context), "\u0000")
+	return envs
 }

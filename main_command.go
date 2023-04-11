@@ -42,6 +42,10 @@ var runCommand = cli.Command{
 			Name:  "cpuset",
 			Usage: "cpuset limit",
 		},
+		cli.StringSliceFlag{
+			Name: "e",
+			Usage: "set environment",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
@@ -67,7 +71,8 @@ var runCommand = cli.Command{
 		containerName := context.String("name")
 		imageName := cmd[0]
 		cmd = cmd[1:]
-		Run(tty, cmd, resConf, volume, containerName,imageName)
+		environment := context.StringSlice("e")
+		Run(tty, cmd, resConf, volume, containerName,imageName,environment)
 		return nil
 	},
 }
