@@ -100,19 +100,25 @@ func (nw *Network) load(dumpPath string) error {
 	return nil
 }
 
-func CreateNetwork(driver, subnet, name string) error {
+func CreateNetwork(driver, cidr, name string) error {
 	// ParseCIDR 是 Galang net 包的函数，功能是将网段的字符串转换成 net.IPNet 的对象
-	_, cidr, _ := net.ParseCIDR(subnet)
-	//  通过 IPAM 分配网关 IP，获取到网段中第一个 IP 作为网关的IP
-	ip, err := ipAllocator.Allocate(cidr)
+	// For example, ParseCIDR("192.0.2.1/24") returns the IP address 192.0.2.1 and the network 192.0.2.0/24.
+	// CIDR记法："192.0.2.1/24"
+	_, subnet, _ := net.ParseCIDR(cidr)
+	// fmt.Println("CIDR return",ip,subnet)
+	// 通过 IPAM 分配网关 IP，获取到网段中第一个 IP 作为网关的IP
+	// 这里没有考虑 192.168.10.4/24表示192.168.10.4为第一个可分配的ip，
+	// 而是直接从整个子网的第一个可分配地址开始，所以一个分配到的是192.168.10.1
+	ip, err := ipAllocator.Allocate(subnet)
+	// fmt.Println("ipAllocator return",ip,subnet.IP)
 	if err != nil {
 		return err
 	}
-	cidr.IP = ip
+	subnet.IP = ip
 
 	/* 调用指定的网络驱动创建网络，这里的 drivers 字典是各个网络驱动的实例字典 ，
 	通过调用网络驱动的 Create 方法创建网络，后面会以 Bridge 驱动为例介绍它的实现*/
-	nw, err := drivers[driver].Create(cidr.String(), name)
+	nw, err := drivers[driver].Create(subnet.String(), name)
 	if err != nil {
 		return err
 	}
@@ -221,7 +227,7 @@ func DeleteNetwork(networkName string) error {
 
 	// 调用网络驱动挂载和配置网络端点
 	if err := drivers[nw.Driver].Delete(nw); err != nil {
-		return fmt.Errorf("Error Remove Network DriverError: %s", err)
+		return fmt.Errorf("error Remove Network DriverError: %s", err)
 	}
 	return nw.remove(defaultNetworkPath)
 }

@@ -43,6 +43,9 @@ func (d *BridgeNetworkDriver) Delete(network *Network) error {
 	if err := netlink.LinkDel(br); err != nil {
 		return fmt.Errorf("Failed to remove bridge interface %s delete: %v", bridgeName, err)
 	}
+	if err := deleteIPTables(bridgeName, network.IPRange); err != nil {
+		return fmt.Errorf("Error delete iptables for %s: %v", bridgeName, err)
+	}
 	return nil
 }
 
@@ -161,8 +164,21 @@ func setInterfaceUP(interfaceName string) error {
 }
 
 func setupIPTables(bridgeName string, subnet *net.IPNet) error {
-	// 
+	// ! -o testbridge 表示数据包的输出接口不是 testbridge 网络接口
+	// 创建SNAT规则，只要是从这个网桥上出来的包，都会对其做源IP的转换，保证了容器经过宿主机访问到宿主机外部网络请求的包转换成机器的IP
 	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
+	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
+	//err := cmd.Run()
+	output, err := cmd.Output()
+	if err != nil {
+		log.Errorf("iptables Output, %v", output)
+	}
+	return err
+}
+
+func deleteIPTables(bridgeName string, subnet *net.IPNet) error {
+	// 
+	iptablesCmd := fmt.Sprintf("-t nat -D POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
 	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
 	//err := cmd.Run()
 	output, err := cmd.Output()
