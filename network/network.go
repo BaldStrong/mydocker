@@ -121,34 +121,34 @@ func CreateNetwork(driver, subnet, name string) error {
 
 // ------------------创建容器并连接网络
 
-func Connect(networkName string, cinfo *container.ContainerInfo) error {
-	nw, ok := networks[networkName]
-	if !ok {
-		return fmt.Errorf("No such network: %s", networkName)
-	}
+// func Connect(networkName string, cinfo *container.ContainerInfo) error {
+// 	nw, ok := networks[networkName]
+// 	if !ok {
+// 		return fmt.Errorf("No such network: %s", networkName)
+// 	}
 
-	ip, err := ipAllocator.Allocate(nw.IPRange)
-	if err != nil {
-		return err
-	}
+// 	ip, err := ipAllocator.Allocate(nw.IPRange)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	ep := &Endpoint{
-		ID:          fmt.Sprintf("%s-%s", cinfo.Id, networkName),
-		IPAddress:   ip,
-		Network:     nw,
-		PortMapping: cinfo.PortMapping,
-	}
-	// 调用网络驱动挂载和配置网络端点
-	if err = drivers[nw.Driver].Connect(nw, ep); err != nil {
-		return err
-	}
-	// 到容器的namespace配置容器网络设备IP地址
-	if err = configEndpointAddressAndRoute(ep, cinfo); err != nil {
-		return err
-	}
+// 	ep := &Endpoint{
+// 		ID:          fmt.Sprintf("%s-%s", cinfo.Id, networkName),
+// 		IPAddress:   ip,
+// 		Network:     nw,
+// 		PortMapping: cinfo.PortMapping,
+// 	}
+// 	// 调用网络驱动挂载和配置网络端点
+// 	if err = drivers[nw.Driver].Connect(nw, ep); err != nil {
+// 		return err
+// 	}
+// 	// 到容器的namespace配置容器网络设备IP地址
+// 	if err = configEndpointAddressAndRoute(ep, cinfo); err != nil {
+// 		return err
+// 	}
 
-	return configPortMapping(ep, cinfo)
-}
+// 	return configPortMapping(ep, cinfo)
+// }
 
 func Disconnect(networkName string, cinfo *container.ContainerInfo) error {
 	return nil
@@ -158,7 +158,7 @@ func Disconnect(networkName string, cinfo *container.ContainerInfo) error {
 
 func ListNetwork() {
 	w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
-	fmt.Fprint(w, "NAME\tIpRange\tDriver\n")
+	fmt.Fprint(w, "NAME\tIPRange\tDriver\n")
 	for _, nw := range networks {
 		fmt.Fprintf(w, "%s\t%s\t%s\n",
 			nw.Name,
@@ -173,7 +173,7 @@ func ListNetwork() {
 }
 
 func Init() error {
-	var bridgeDriver = BridgeNetworkDrvier{}
+	var bridgeDriver = BridgeNetworkDriver{}
 	drivers[bridgeDriver.Name()] = &bridgeDriver
 	// 创建网络默认配置目录
 	if _, err := os.Stat(defaultNetworkPath); err != nil {

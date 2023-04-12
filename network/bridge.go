@@ -34,7 +34,7 @@ func (d *BridgeNetworkDriver) Create(subnet, name string) (*Network, error) {
 	return n, err
 }
 
-func (d *BridgeNetworkDriver) Delete(network Network) error {
+func (d *BridgeNetworkDriver) Delete(network *Network) error {
 	bridgeName := network.Name
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
@@ -69,7 +69,7 @@ func (d *BridgeNetworkDriver) Connect(network *Network, endpoint *Endpoint) erro
 	return nil
 }
 
-func (d *BridgeNetworkDriver) Disconnect(network Network, endpoint *Endpoint) error {
+func (d *BridgeNetworkDriver) Disconnect(network *Network, endpoint *Endpoint) error {
 	return nil
 }
 
@@ -132,7 +132,7 @@ func setInterfaceIP(name, rawIP string) error {
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
-		return fmt.Errorf("Abandoning retrieving the new bridge link from netlink, Run [ ip link ] to troubleshoot the error:", err)
+		return fmt.Errorf("Abandoning retrieving the new bridge link from netlink, Run [ ip link ] to troubleshoot the error:%v", err)
 	}
 	// 由于netlink.ParseIPNet 是对 net.ParseCIDR 的一个封装，可以对ParseCIDR返回的IP和net进行整合
 	// 返回值中的 ipNet 既包含了网段的信息（掩码），192.168.0.0/24，也包含了原始的IP：192.168.0.1
