@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
 var (
@@ -25,9 +28,9 @@ var (
 type Endpoint struct {
 	ID          string           `json:"id"`
 	Device      netlink.Veth     `json:"dev"`
-	IPAddress   net.IP           `json:"ip"`
+	IPAddress   net.IP           `json:"ip"`  // 网络端点的ip
 	MacAddress  net.HardwareAddr `json:"mac"`
-	Network     *Network
+	Network     *Network					  // 网络端点所属的网络
 	PortMapping []string
 }
 
@@ -125,37 +128,6 @@ func CreateNetwork(driver, cidr, name string) error {
 	return nw.dump(defaultNetworkPath)
 }
 
-// ------------------创建容器并连接网络
-
-// func Connect(networkName string, cinfo *container.ContainerInfo) error {
-// 	nw, ok := networks[networkName]
-// 	if !ok {
-// 		return fmt.Errorf("No such network: %s", networkName)
-// 	}
-
-// 	ip, err := ipAllocator.Allocate(nw.IPRange)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	ep := &Endpoint{
-// 		ID:          fmt.Sprintf("%s-%s", cinfo.Id, networkName),
-// 		IPAddress:   ip,
-// 		Network:     nw,
-// 		PortMapping: cinfo.PortMapping,
-// 	}
-// 	// 调用网络驱动挂载和配置网络端点
-// 	if err = drivers[nw.Driver].Connect(nw, ep); err != nil {
-// 		return err
-// 	}
-// 	// 到容器的namespace配置容器网络设备IP地址
-// 	if err = configEndpointAddressAndRoute(ep, cinfo); err != nil {
-// 		return err
-// 	}
-
-// 	return configPortMapping(ep, cinfo)
-// }
-
 func Disconnect(networkName string, cinfo *container.ContainerInfo) error {
 	return nil
 }
@@ -244,4 +216,128 @@ func (nw *Network) remove(dumpDir string) error {
 	} else {
 		return os.Remove(nwPath)
 	}
+}
+
+
+
+
+// ------------------创建容器并连接网络
+
+func Connect(networkName string, cinfo *container.ContainerInfo) error {
+	nw, ok := networks[networkName]
+	if !ok {
+		return fmt.Errorf("No such network: %s", networkName)
+	}
+	// 给容器分配一个ip
+	ip, err := ipAllocator.Allocate(nw.IPRange)
+	if err != nil {
+		return err
+	}
+	// 创建网络端点
+	ep := &Endpoint{
+		ID:          fmt.Sprintf("%s-%s", cinfo.Id, networkName),
+		IPAddress:   ip,
+		Network:     nw,
+		PortMapping: cinfo.PortMapping,
+	}
+	// 调用网络驱动挂载和配置网络端点
+	if err = drivers[nw.Driver].Connect(nw, ep); err != nil {
+		return err
+	}
+	// 到容器的namespace配置容器网络设备IP地址
+	if err = configEndpointAddressAndRoute(ep, cinfo); err != nil {
+		return err
+	}
+	// 配置容器和宿主机的端口映射
+	return configPortMapping(ep, cinfo)
+}
+
+func configEndpointAddressAndRoute(ep *Endpoint, cinfo *container.ContainerInfo) error {
+	peerlink,err := netlink.LinkByName(ep.Device.Name)
+	if err != nil {
+		return fmt.Errorf("fail config endpoint: %v", err)
+	}
+	defer enterContainerNetns(&peerlink,cinfo)()
+
+	interfaceIP := *ep.Network.IPRange
+	interfaceIP.IP = ep.IPAddress
+	if err= setInterfaceIP(ep.Device.PeerName,interfaceIP.String()) ;err != nil {
+		return fmt.Errorf("ep.Network: %v, setInterfaceIP failed: %s", ep.Network, err)
+	}
+	if err= setInterfaceUP(ep.Device.PeerName) ;err != nil {
+		return fmt.Errorf("ep.Network: %v, setInterfaceUP failed: %s", ep.Network, err)
+	}
+	// 设置loop back，使自己能连通自己
+	if err= setInterfaceUP("lo") ;err != nil {
+		return err
+	}
+	_, cidr,_ := net.ParseCIDR("0.0.0.0/0")
+	defaultRoute := &netlink.Route{
+		LinkIndex: peerlink.Attrs().Index,
+		Gw: ep.Network.IPRange.IP,
+		Dst: cidr,
+	}
+
+	if err= netlink.RouteAdd(defaultRoute) ;err != nil {
+		return fmt.Errorf("RouteAdd failed: %s", err)
+	}
+	return nil
+}
+
+func enterContainerNetns(enterLink *netlink.Link, cinfo *container.ContainerInfo) func() {
+	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net",cinfo.Pid),os.O_RDONLY,0)
+	if err != nil {
+		log.Errorf("error get container net namespace, %v", err)
+	}
+
+	nsFd := f.Fd()
+	// 锁定当前程序所执行的线程，如果不锁定操作系统线程的话
+	// Go 语言的 goroutine是轻量级线程，可能会被调度到别的系统级线程上去
+	// 就不能保证一直在所需要的net namespace中了
+	// 所以调用 runtime.LockOSThread 时要先锁定当前程序执行的线程
+	runtime.LockOSThread()
+
+	// 将veth peer另一端移到容器的ns中
+	if err= netlink.LinkSetNsFd(*enterLink,int(nsFd)) ;err != nil {
+		log.Errorf("set link netns failed: %v", err)
+	}
+	// 获取当前进程的net namespace
+	origNS,err := netns.Get()
+	if err != nil {
+		log.Errorf("get origNS failed: %v", err)
+	}
+	// 设置当前进程到新的net namespace，
+	//  nsFd是uintptr，netns.NsHandle()将其转换为int
+	// netns.NsHandle(nsFd)根据nsFd获取net namespace句柄
+	if err = netns.Set(netns.NsHandle(nsFd)); err != nil {
+		log.Errorf("set netns failed: %v",err)
+	}
+
+	// 在容器的网络空间中，执行完容器配置之后调用此函数就可以将程序恢复到原来的Net Namespace
+	return func() {
+		netns.Set(origNS)
+		origNS.Close()
+		runtime.UnlockOSThread()
+		f.Close()
+	}	
+}
+
+// 通过iptables的DNAT规则来实现宿主机上的请求转发到容器上
+func configPortMapping(ep *Endpoint, cinfo *container.ContainerInfo) error {
+	for _,pm := range ep.PortMapping {
+		portMapping := strings.Split(pm,":")
+		if len(portMapping) != 2 {
+			log.Errorf("port mapping format error: %v",pm)
+			continue
+		}
+		iptablesCmd := fmt.Sprintf("-t nat -A PREROUTING -p tcp -m tcp --dport %s -j DNAT --to-destination %s:%s",
+								portMapping[0],ep.IPAddress.String(),portMapping[1])
+		cmd := exec.Command("iptables",strings.Split(iptablesCmd," ")...)
+		output,err := cmd.Output()
+		if err != nil {
+			log.Errorf("iptables output: %v",output)
+			continue
+		}
+	}
+	return nil
 }
