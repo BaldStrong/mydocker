@@ -51,11 +51,13 @@ func (d *BridgeNetworkDriver) Delete(network *Network) error {
 
 func (d *BridgeNetworkDriver) Connect(network *Network, endpoint *Endpoint) error {
 	bridgeName := network.Name
+	// fmt.Println("bridgeName:",bridgeName)
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
 	linkAttrs := netlink.NewLinkAttrs()
+	// fmt.Println("endpoint.ID:",endpoint.ID)
 	linkAttrs.Name = endpoint.ID[:5]
 	linkAttrs.MasterIndex = br.Attrs().Index
 
@@ -69,6 +71,13 @@ func (d *BridgeNetworkDriver) Connect(network *Network, endpoint *Endpoint) erro
 	if err = netlink.LinkSetUp(&endpoint.Device); err != nil {
 		return fmt.Errorf("Error setup Endpoint Device: %v", err)
 	}
+	// cmd := exec.Command("ip","link")
+	// output, err := cmd.Output()
+	// outStr := string(output)
+	// outStr = strings.ReplaceAll(outStr, `\n`, "\n")
+	// outStr = strings.ReplaceAll(outStr, `\t`, "\t")
+	// outStr = strings.Trim(outStr, " ")
+	// fmt.Println(outStr)
 	return nil
 }
 

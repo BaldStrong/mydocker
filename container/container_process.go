@@ -24,7 +24,7 @@ var (
 	Running             string = "running"
 	Stop                string = "stopped"
 	Exit                string = "exited"
-	DefaultInfoLocation string = "/var/run/mydocker/%s/"
+	DefaultInfoLocation string = "/var/run/mydocker/container/%s/"
 	ConfigName          string = "config.json"
 	LogName             string = "container.log"
 )

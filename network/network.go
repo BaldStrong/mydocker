@@ -242,22 +242,59 @@ func Connect(networkName string, cinfo *container.ContainerInfo) error {
 	}
 	// 调用网络驱动挂载和配置网络端点
 	if err = drivers[nw.Driver].Connect(nw, ep); err != nil {
-		return err
+		return fmt.Errorf("drivers[nw.Driver].Connect(nw, ep) failed:%v",err)
 	}
-	// 到容器的namespace配置容器网络设备IP地址
+	// 到容器的namespace中配置容器网络设备IP地址
 	if err = configEndpointAddressAndRoute(ep, cinfo); err != nil {
-		return err
+		return fmt.Errorf("configEndpointAddressAndRoute failed:%v",err)
 	}
 	// 配置容器和宿主机的端口映射
 	return configPortMapping(ep, cinfo)
 }
 
 func configEndpointAddressAndRoute(ep *Endpoint, cinfo *container.ContainerInfo) error {
-	peerlink,err := netlink.LinkByName(ep.Device.Name)
+	// 这里切记是PeerName，将peer这端绑定在容器内，这样在容器内看到的是cif-81233，在宿主机看到的类似：81233@if51
+	// LinkByName是最大前缀匹配寻找的，所以只指定@前面的就可以
+	peerlink,err := netlink.LinkByName(ep.Device.PeerName)
 	if err != nil {
 		return fmt.Errorf("fail config endpoint: %v", err)
 	}
 	defer enterContainerNetns(&peerlink,cinfo)()
+	/*
+	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net",cinfo.Pid),os.O_RDONLY,0)
+	if err != nil {
+		log.Errorf("error get container net namespace, %v", err)
+	}
+
+	nsFd := f.Fd()
+	// 锁定当前程序所执行的线程，如果不锁定操作系统线程的话
+	// Go 语言的 goroutine是轻量级线程，可能会被调度到别的系统级线程上去
+	// 就不能保证一直在所需要的net namespace中了
+	// 所以调用 runtime.LockOSThread 时要先锁定当前程序执行的线程
+	runtime.LockOSThread()
+
+	// 将veth peer另一端移到容器的ns中
+	if err= netlink.LinkSetNsFd(peerlink,int(nsFd)) ;err != nil {
+		log.Errorf("set link netns failed: %v", err)
+	}
+	// 获取当前进程的net namespace
+	origNS,err := netns.Get()
+	if err != nil {
+		log.Errorf("get origNS failed: %v", err)
+	}
+	// 设置当前进程到新的net namespace，
+	//  nsFd是uintptr，netns.NsHandle()将其转换为int
+	// netns.NsHandle(nsFd)根据nsFd获取net namespace句柄
+	if err = netns.Set(netns.NsHandle(nsFd)); err != nil {
+		log.Errorf("set netns failed: %v",err)
+	}
+	defer func() {
+		netns.Set(origNS)
+		origNS.Close()
+		runtime.UnlockOSThread()
+		f.Close()
+	}()
+	*/
 
 	interfaceIP := *ep.Network.IPRange
 	interfaceIP.IP = ep.IPAddress

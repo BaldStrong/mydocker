@@ -5,6 +5,7 @@ import (
 	"example/mydocker/cgroups"
 	"example/mydocker/cgroups/subsystems"
 	"example/mydocker/container"
+	"example/mydocker/network"
 	"fmt"
 	"math/rand"
 	"os"
@@ -15,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string, containerName string, imageName string, environment []string) {
+func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume string, containerName string, imageName string, environment []string, nw string, portMapping []string) {
 	containerID := randStringBytes(10)
 	if containerName == "" {
 		log.Info("name is empty, use id")
@@ -31,10 +32,17 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	}
 
 	oneCommand := strings.Join(command, " ")
-	containerName, err := recordContainerInfo(parent.Process.Pid, containerID, oneCommand, containerName, volume)
-	if err != nil {
+	containerInfo, err := recordContainerInfo(parent.Process.Pid, containerID, oneCommand, containerName, volume, portMapping)
+	if containerInfo == nil || err != nil {
 		log.Errorf("record container info error %v", err)
 		return
+	}
+	if nw != "" {
+		network.Init()
+		if err := network.Connect(nw,containerInfo); err != nil {
+			log.Errorf("connect network failed: %v",err)
+			return
+		}
 	}
 	// 执行闪退，发现是这里的问题，后面发现是flag里面的mem参数没有传进来导致的
 	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
@@ -45,9 +53,9 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 	// 只有当交互式时父进程会等待子进程结束
 	if tty {
 		parent.Wait()
-		deleteContainerInfo(containerName)
+		deleteContainerInfo(containerInfo.Name)
 		// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
-		container.DeleteWorkSpace(volume, containerName)
+		container.DeleteWorkSpace(volume, containerInfo.Name)
 	}
 	os.Exit(-1)
 }
@@ -60,7 +68,7 @@ func sendInitCommand(oneCommand string, writePipe *os.File) {
 	writePipe.Close()
 }
 
-func recordContainerInfo(containerPID int, containerID string, oneCommand string, containerName string, volume string) (string, error) {
+func recordContainerInfo(containerPID int, containerID string, oneCommand string, containerName string, volume string,portMapping []string) (*container.ContainerInfo, error) {
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	containerInfo := &container.ContainerInfo{
 		Id:         containerID,
@@ -70,12 +78,13 @@ func recordContainerInfo(containerPID int, containerID string, oneCommand string
 		CreateTime: createTime,
 		Status:     container.Running,
 		Volume:     volume,
+		PortMapping: portMapping,
 	}
 
 	jsonBytes, err := json.Marshal(containerInfo)
 	if err != nil {
 		log.Errorf("record container info error %v", err)
-		return "", err
+		return nil, err
 	}
 	jsonStr := string(jsonBytes)
 
@@ -83,22 +92,22 @@ func recordContainerInfo(containerPID int, containerID string, oneCommand string
 	configPath := fmt.Sprintf(container.DefaultInfoLocation, containerName)
 	if err := os.MkdirAll(configPath, 0622); err != nil {
 		log.Errorf("mkdir configPath:%s error %v", configPath, err)
-		return "", err
+		return nil, err
 	}
 	fileName := configPath + "/" + container.ConfigName
 	file, err := os.Create(fileName)
 	if err != nil {
 		log.Errorf("create config file:%s error %v", fileName, err)
-		return "", err
+		return nil, err
 	}
 	defer file.Close()
 
 	if _, err := file.WriteString(jsonStr); err != nil {
 		log.Errorf("write config file error %v", err)
-		return "", err
+		return nil, err
 	}
 
-	return containerName, err
+	return containerInfo, err
 }
 
 func randStringBytes(n int) string {
