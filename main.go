@@ -31,6 +31,7 @@ func main() {
 	app.Before = func(context *cli.Context) error {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetOutput(os.Stdout)
+		log.SetLevel(log.DebugLevel)
 		return nil
 	}
 

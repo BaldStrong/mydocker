@@ -42,7 +42,7 @@ func NewParentProcess(tty bool, volume string, containerName string, imageName s
 		log.Errorf("New pipe error %v", err)
 		return nil, nil
 	}
-	log.Info("NewParentProcess")
+	log.Debug("NewParentProcess")
 	cmd := exec.Command("/proc/self/exe", "init")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS |
@@ -53,6 +53,7 @@ func NewParentProcess(tty bool, volume string, containerName string, imageName s
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	} else {
+		log.Debug("create log.json")
 		logDir := fmt.Sprintf(DefaultInfoLocation, containerName)
 		if err := os.MkdirAll(logDir, 0622); err != nil {
 			log.Errorf("mkdir logDir:%s error %v", logDir, err)

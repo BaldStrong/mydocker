@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -56,8 +57,28 @@ func Run(tty bool, command []string, res *subsystems.ResourceConfig, volume stri
 		deleteContainerInfo(containerInfo.Name)
 		// run()才是程序的main函数，所以要想确保在程序执行的最后销毁东西，写在这里比较好
 		container.DeleteWorkSpace(volume, containerInfo.Name)
+	}else {
+		log.Debug("-d模式,容器pid: ",parent.Process.Pid)
+		// 判断容器进程是否存活,用于detach失败的情况
+		if isProcessDefunct(parent.Process.Pid) {
+			log.Debug("detach失败，容器进程挂掉，删除容器相关信息")
+			StopContainer(containerName)
+			RemoveContainer(containerName)
+		}
 	}
 	os.Exit(-1)
+}
+
+func isProcessDefunct(pid int) bool {
+    out, err := exec.Command("ps", "-p", strconv.Itoa(pid)).Output()
+    if err != nil {
+        // 执行命令出错，说明进程不存在或者没有权限
+        return false
+    }
+	log.Debug(string(out))
+	log.Debug(err)
+    // 如果输出中包含defunct，则说明detach失败，进程无效
+    return strings.Contains(string(out), "defunct")
 }
 
 func sendInitCommand(oneCommand string, writePipe *os.File) {
